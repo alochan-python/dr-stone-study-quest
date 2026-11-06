@@ -1,0 +1,12 @@
+node_modules/
+dist/
+*.local
+.DS_Store
+coverage/
+playwright-report/
+test-results/
+__pycache__/
+
+# 提供画像と、そこから作る切り出し画像・画像パックは絶対に公開しない
+private-assets/
+*image-pack*.json
