@@ -1,15 +1,35 @@
 /// <reference types="vitest/config" />
 import react from '@vitejs/plugin-react';
+import { createReadStream, existsSync } from 'node:fs';
+import { resolve } from 'node:path';
+import type { Plugin } from 'vite';
 import { defineConfig } from 'vitest/config';
 import { VitePWA } from 'vite-plugin-pwa';
 
 // GitHub Pages のサブパス配信に合わせる
 const base = '/dr-stone-study-quest/';
 
+/** npm run dev の時だけ手元の画像パックを配信する。ビルド結果には含まれない */
+function privateImagePack(): Plugin {
+  const file = resolve(import.meta.dirname, 'private-assets/dr-stone-image-pack.json');
+  return {
+    name: 'private-image-pack',
+    apply: 'serve',
+    configureServer(server) {
+      server.middlewares.use(`${base}__private/image-pack.json`, (_req, res, next) => {
+        if (!existsSync(file)) return next();
+        res.setHeader('Content-Type', 'application/json');
+        createReadStream(file).pipe(res);
+      });
+    },
+  };
+}
+
 export default defineConfig({
   base,
   plugins: [
     react(),
+    privateImagePack(),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'icons/apple-touch-icon.png'],

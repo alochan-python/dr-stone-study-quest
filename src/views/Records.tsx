@@ -1,7 +1,8 @@
 import { useRef, useState, type ChangeEvent } from 'react';
 import { ConfirmDialog, Modal } from '../components/Modal';
 import { TOTAL_CHARACTERS } from '../domain/characters';
-import { ImportError, backupFileName, parseBackup, parseImagePack, planMerge, type MergePlan } from '../domain/backup';
+import { ImagePackButton } from '../components/ImagePackButton';
+import { ImportError, backupFileName, parseBackup, planMerge, type MergePlan } from '../domain/backup';
 import { formatJa } from '../domain/date';
 import { gradeFor } from '../domain/grade';
 import { playConfirmSound } from '../domain/sound';
@@ -35,7 +36,6 @@ export function Records({ onOpenComplete }: { onOpenComplete(): void }) {
   const { progress, today, records, settings, images, snapshot, notify } = app;
   const { stats } = progress;
   const backupInput = useRef<HTMLInputElement>(null);
-  const imageInput = useRef<HTMLInputElement>(null);
   const [incoming, setIncoming] = useState<{ records: DayRecord[]; plan: MergePlan } | null>(null);
   const [confirm, setConfirm] = useState<'replace' | 'reset' | 'restore' | 'clear-images' | null>(null);
   const imageCount = Object.keys(images).length;
@@ -67,13 +67,6 @@ export function Records({ onOpenComplete }: { onOpenComplete(): void }) {
     setIncoming({ records: parsed, plan: planMerge(records, parsed) });
   };
 
-  const onImagePack = async (text: string) => {
-    const pack = parseImagePack(text);
-    if (await app.importImages(pack)) {
-      notify({ kind: 'success', text: `${Object.keys(pack).length}人分の画像を読み込みました` });
-    }
-  };
-
   const merge = async () => {
     if (!incoming) return;
     if (await app.applyMerge(incoming.plan)) {
@@ -94,8 +87,8 @@ export function Records({ onOpenComplete }: { onOpenComplete(): void }) {
     <div className="page">
       <header className="page-head"><h2>きろく</h2></header>
       <dl className="stat-grid">
-        <Stat label="現在の連続達成" value={stats.currentStreak} unit="日" id="stat-current" />
-        <Stat label="最長連続達成" value={stats.longestStreak} unit="日" id="stat-longest" />
+        <Stat label="現在の連続達成" value={stats.currentStreak} unit="日" id="stat-current" hero />
+        <Stat label="最長連続達成" value={stats.longestStreak} unit="日" id="stat-longest" hero />
         <Stat label="累計自主勉強達成" value={stats.achievedDays} unit="日" id="stat-days" />
         <Stat label="自主勉強の累計" value={stats.totalProblems} unit="問" id="stat-problems" />
         <Stat label={`${stats.lap >= 2 ? `${stats.lap}周目 ` : ''}${TOTAL_CHARACTERS}人中`} value={stats.collected} unit="人まで" id="stat-collected" />
@@ -139,16 +132,8 @@ export function Records({ onOpenComplete }: { onOpenComplete(): void }) {
           公開版には画像を含めていません。手元の画像パック（JSON）を読み込むと、この端末の中だけで表示します。
         </p>
         <div className="panel-actions">
-          <button className="btn" onClick={() => imageInput.current?.click()}>画像パックを読み込む</button>
+          <ImagePackButton />
           {imageCount > 0 && <button className="btn" onClick={() => setConfirm('clear-images')}>仮画像に戻す</button>}
-          <input
-            ref={imageInput}
-            data-testid="image-file"
-            type="file"
-            accept=".json,application/json"
-            hidden
-            onChange={(e) => void readFile(e, onImagePack)}
-          />
         </div>
       </section>
 
@@ -264,9 +249,9 @@ export function Records({ onOpenComplete }: { onOpenComplete(): void }) {
   );
 }
 
-function Stat({ label, value, unit, id }: { label: string; value: number; unit: string; id: string }) {
+function Stat({ label, value, unit, id, hero = false }: { label: string; value: number; unit: string; id: string; hero?: boolean }) {
   return (
-    <div className="stat">
+    <div className={`stat${hero ? ' stat-hero' : ''}`}>
       <dt>{label}</dt>
       <dd data-testid={id}>{value}<small>{unit}</small></dd>
     </div>

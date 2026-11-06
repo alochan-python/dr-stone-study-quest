@@ -118,7 +118,10 @@ ul { list-style: none; }
 .chip dt { font-size: 10px; font-weight: 700; color: var(--muted); }
 .chip dd { font-size: 20px; font-weight: 900; line-height: 1.15; }
 .chip small { font-size: 11px; margin-left: 1px; }
-.chip-fire dd { color: var(--fire); }
+.chip-fire { display: flex; flex-direction: column; justify-content: center; min-width: 76px; border-color: #8a5a1c; background: #2a1c0c; }
+.chip-fire dt { color: #ffd9a3; }
+.chip-fire dd { color: var(--fire); font-size: 38px; line-height: 1; }
+.chip-fire small { font-size: 15px; }
 .chip-next dd { display: flex; align-items: center; gap: 6px; font-size: 13px; }
 .chip-name { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.2; }
 .chip-thumb { width: 26px; height: 26px; flex: none; }
@@ -310,13 +313,24 @@ ul { list-style: none; }
 .banner-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
 .banner-gold { background: linear-gradient(90deg, #6c500a, #2c220b); color: #ffe48a; font-weight: 900; }
 
+.image-hint {
+  display: flex; align-items: center; gap: 8px;
+  margin-top: 8px; padding: 6px 8px 6px 12px;
+  background: #0f2a2c; border: 1px solid #1f7f75; border-radius: 12px;
+}
+.image-hint p { flex: 1; min-width: 0; font-size: 12px; font-weight: 700; line-height: 1.35; }
+.image-hint .btn { flex: none; font-size: 12px; padding: 6px 8px; }
+.image-hint .icon-btn { width: 36px; height: 36px; font-size: 18px; flex: none; }
+
 @media (min-width: 760px) {
   .home-grid { grid-template-columns: minmax(0, 1.05fr) minmax(320px, 1fr); gap: 24px; align-items: start; margin-top: 14px; }
   .hex-stack { width: min(36vw, 46dvh, 360px); }
   .controls { margin-top: 26px; gap: 14px; }
   .topbar h1 { font-size: 22px; }
   .brand { font-size: 24px; }
-  .chips { grid-template-columns: 96px 96px minmax(0, 1fr); }
+  .chips { grid-template-columns: 120px 96px minmax(0, 1fr); }
+  .chip-fire dd { font-size: 48px; }
+  .chip-fire small { font-size: 18px; }
 }
 
 /* 背の低いスマホでも、スクロールせず入力・保存に届くようにする */
@@ -326,6 +340,8 @@ ul { list-style: none; }
   .chips { margin-top: 4px; }
   .chip { padding: 2px 8px; }
   .chip dd { font-size: 16px; }
+  .chip-fire dd { font-size: 28px; }
+  .chip-fire small { font-size: 12px; }
   .home-grid { gap: 6px; margin-top: 4px; }
   .stage-date { font-size: 12px; }
   .stamp-card { padding: 6px 8px; }
@@ -423,6 +439,9 @@ button.tile:hover { border-color: var(--accent); }
 .stat dt { font-size: 12px; font-weight: 700; color: var(--muted); }
 .stat dd { font-size: 26px; font-weight: 900; line-height: 1.2; }
 .stat small { margin-left: 2px; font-size: 13px; }
+.stat-hero { border-color: #8a5a1c; background: #2a1c0c; }
+.stat-hero dd { color: var(--fire); font-size: 44px; line-height: 1.1; }
+.stat-hero small { font-size: 18px; }
 @media (min-width: 760px) { .stat-grid:not(.stat-grid-2) { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 .panel { margin-top: 12px; padding: 13px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; }
 .panel h3 { margin-bottom: 5px; font-size: 16px; font-weight: 900; }

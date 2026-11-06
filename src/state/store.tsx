@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { buildBackup, planMerge, type MergePlan } from '../domain/backup';
+import { buildBackup, parseImagePack, planMerge, type MergePlan } from '../domain/backup';
 import { todayInTokyo } from '../domain/date';
 import { gradeFor, normalizeProblems } from '../domain/grade';
 import { deriveProgress, type DayRecord, type Progress } from '../domain/progress';
@@ -89,6 +89,13 @@ export function AppProvider({
       setRecords(loadedRecords);
       setSettings({ ...DEFAULT_SETTINGS, ...loadedSettings });
       setImages(loadedImages);
+      if (import.meta.env.MODE === 'development' && Object.keys(loadedImages).length === 0) {
+        // ローカル起動時だけ、手元の画像パックを自動で使う（公開版のビルドには含まれない）
+        fetch(`${import.meta.env.BASE_URL}__private/image-pack.json`)
+          .then((response) => (response.ok ? response.text() : Promise.reject(new Error('no pack'))))
+          .then((text) => setImages(parseImagePack(text)))
+          .catch(() => undefined);
+      }
       setDraftState(loadedDraft ?? null);
       setSnapshot(loadedSnapshot ?? null);
       setStatus('ready');

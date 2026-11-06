@@ -81,11 +81,13 @@ iPhone / iPad の消音モード（着信スイッチ）がオンの間は、確
 | 仮画像（順位と頭文字を描画） | アプリ本体 | する |
 | 提供画像・切り出し画像・画像パック | `private-assets/`（`.gitignore` 済み） | **しない** |
 
-実際の画像で使う手順（端末ごとに1回）:
+Mac で `npm run dev` を使う場合は、`private-assets/dr-stone-image-pack.json` があれば自動で実画像を表示します（この仕組みはローカル起動の時だけ動き、公開版には含まれません）。
+
+公開URLや iPhone / iPad で実際の画像を使う手順（端末ごとに1回）:
 
 1. `private-assets/source/` に提供画像を置き、`npm run pack:images` を実行する（Python と Pillow が必要）
 2. できた `private-assets/dr-stone-image-pack.json` を AirDrop などで端末に送る
-3. アプリの「きろく」→「画像パックを読み込む」で選ぶ
+3. アプリのホーム画面（または「きろく」タブ）の「画像パックを読み込む」で選ぶ
 
 画像はその端末の IndexedDB にだけ保存され、通信で送信されません。画像パックを公開の場所に置かないでください。
 

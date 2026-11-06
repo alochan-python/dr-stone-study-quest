@@ -6,9 +6,16 @@ export interface Settings {
   sound: boolean;
   lastBackupAt: string | null;
   completionSeen: boolean;
+  imageHintDismissed: boolean;
 }
 
-export const DEFAULT_SETTINGS: Settings = { animations: true, sound: true, lastBackupAt: null, completionSeen: false };
+export const DEFAULT_SETTINGS: Settings = {
+  animations: true,
+  sound: true,
+  lastBackupAt: null,
+  completionSeen: false,
+  imageHintDismissed: false,
+};
 
 export interface Draft {
   date: string;

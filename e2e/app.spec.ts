@@ -36,8 +36,35 @@ test('主要ボタンが画面内でタップできる大きさ', async ({ page 
   }
 });
 
+test('ホーム画面の案内から画像パックを読み込める', async ({ page }) => {
+  const pack = JSON.stringify({
+    app: 'dr-stone-study-quest',
+    type: 'image-pack',
+    version: 1,
+    images: { 50: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAEBgIApD5fRAAAAABJRU5ErkJggg==' },
+  });
+  await page.goto('./');
+  await expect(page.getByTestId('image-hint')).toBeVisible();
+  await page.getByTestId('image-file').setInputFiles({ name: 'p.json', mimeType: 'application/json', buffer: Buffer.from(pack) });
+  await expect(page.getByText('1人分の画像を読み込みました')).toBeVisible();
+  await expect(page.getByTestId('image-hint')).toHaveCount(0);
+  await expect(card(page).locator('img.portrait')).toHaveAttribute('alt', 'ブロディ');
+  await page.reload();
+  await expect(card(page).locator('img.portrait')).toHaveAttribute('alt', 'ブロディ');
+});
+
+test('案内を閉じると再表示されない', async ({ page }) => {
+  await page.goto('./');
+  await page.getByRole('button', { name: 'この案内を閉じる' }).click();
+  await expect(page.getByTestId('image-hint')).toHaveCount(0);
+  await page.reload();
+  await expect(card(page)).toBeVisible();
+  await expect(page.getByTestId('image-hint')).toHaveCount(0);
+});
+
 test('スクロールせずに入力と保存へ届く（縦長スマホ以上）', async ({ page }) => {
   await page.goto('./');
+  await page.getByRole('button', { name: 'この案内を閉じる' }).click();
   const box = await save(page).boundingBox();
   const navTop = (await page.getByRole('navigation').boundingBox())!.y;
   const viewport = page.viewportSize()!;
