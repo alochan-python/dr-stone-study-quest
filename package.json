@@ -12,6 +12,7 @@
     "test:e2e": "playwright test",
     "check:assets": "node scripts/check-public-assets.mjs",
     "pack:images": "python3 scripts/build_image_pack.py",
+    "pack:encrypt": "node scripts/encrypt-image-pack.ts",
     "icons": "python3 scripts/build_icons.py"
   },
   "dependencies": {

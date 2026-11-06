@@ -390,7 +390,7 @@ describe('バックアップと初期化', () => {
     expect(screen.getByTestId('stat-problems')).toHaveTextContent('5');
 
     await user.click(screen.getByRole('button', { name: '記録をすべて消す' }));
-    await user.type(screen.getByRole('textbox'), 'リセット');
+    await user.type(screen.getByRole('textbox', { name: /リセット/ }), 'リセット');
     await user.click(screen.getByRole('button', { name: '消す' }));
     await waitFor(() => expect(screen.getByTestId('stat-problems')).toHaveTextContent('0'));
     expect(screen.getByRole('button', { name: 'この状態に戻す' })).toBeInTheDocument();

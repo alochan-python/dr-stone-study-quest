@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 
 const tab = (page: Page, name: string) => page.getByRole('navigation').getByRole('button', { name });
 const plusOne = (page: Page) => page.getByRole('button', { name: '1問増やす' });
@@ -36,7 +36,31 @@ test('主要ボタンが画面内でタップできる大きさ', async ({ page 
   }
 });
 
-test('ホーム画面の案内から画像パックを読み込める', async ({ page }) => {
+const PASS_FILE = 'private-assets/passphrase.txt';
+
+test('合言葉でキャラクター画像を表示でき、再読み込み後も残る', async ({ page }) => {
+  test.skip(!existsSync(PASS_FILE), '合言葉はこのPCにしかない');
+  await page.goto('./');
+  await page.getByLabel('合言葉').fill('wrong-passphrase');
+  await page.getByRole('button', { name: 'キャラを表示' }).click();
+  await expect(page.getByRole('alert')).toContainText('合言葉が違います');
+  await expect(card(page).locator('img.portrait')).toHaveCount(0);
+
+  // スマホの自動大文字化を想定し、先頭を大文字にして入力する
+  const pass = readFileSync(PASS_FILE, 'utf8').trim();
+  await page.getByLabel('合言葉').fill(pass.charAt(0).toUpperCase() + pass.slice(1));
+  await page.getByRole('button', { name: 'キャラを表示' }).click();
+  await expect(page.getByText('50人のキャラクターを表示しました')).toBeVisible();
+  await expect(card(page).locator('img.portrait')).toHaveAttribute('alt', 'ブロディ');
+  await expect(page.getByTestId('image-hint')).toHaveCount(0);
+
+  await page.reload();
+  await expect(card(page).locator('img.portrait')).toHaveAttribute('alt', 'ブロディ');
+  await tab(page, 'スタンプ帳').click();
+  await expect(page.locator('.zukan-grid img.portrait')).toHaveCount(50);
+});
+
+test('きろくタブから画像パックのファイルも読み込める', async ({ page }) => {
   const pack = JSON.stringify({
     app: 'dr-stone-study-quest',
     type: 'image-pack',
@@ -45,8 +69,10 @@ test('ホーム画面の案内から画像パックを読み込める', async ({
   });
   await page.goto('./');
   await expect(page.getByTestId('image-hint')).toBeVisible();
+  await tab(page, 'きろく').click();
   await page.getByTestId('image-file').setInputFiles({ name: 'p.json', mimeType: 'application/json', buffer: Buffer.from(pack) });
   await expect(page.getByText('1人分の画像を読み込みました')).toBeVisible();
+  await tab(page, 'ホーム').click();
   await expect(page.getByTestId('image-hint')).toHaveCount(0);
   await expect(card(page).locator('img.portrait')).toHaveAttribute('alt', 'ブロディ');
   await page.reload();
@@ -57,6 +83,7 @@ test('案内を閉じると再表示されない', async ({ page }) => {
   await page.goto('./');
   await page.getByRole('button', { name: 'この案内を閉じる' }).click();
   await expect(page.getByTestId('image-hint')).toHaveCount(0);
+  await page.waitForTimeout(300); // 設定の書き込み完了を待つ
   await page.reload();
   await expect(card(page)).toBeVisible();
   await expect(page.getByTestId('image-hint')).toHaveCount(0);
@@ -148,7 +175,7 @@ test('JSONバックアップを書き出し、初期化後に復元できる', a
   expect(backup.records).toMatchObject([{ date: '2026-11-06', problems: 3, homework: true }]);
 
   await page.getByRole('button', { name: '記録をすべて消す' }).click();
-  await page.getByRole('textbox').fill('リセット');
+  await page.getByRole('textbox', { name: /リセット/ }).fill('リセット');
   await page.getByRole('button', { name: '消す', exact: true }).click();
   await expect(page.getByTestId('stat-problems')).toHaveText(/^0/);
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ImportError, buildBackup, parseBackup, parseImagePack, planMerge } from './backup';
 import { CHARACTERS, characterAtOrder } from './characters';
+import { WrongPassphraseError, decryptPack, encryptPack } from './encryptedPack';
 import { addDays, isValidDate, monthCells, todayInTokyo } from './date';
 import { gradeFor, normalizeProblems } from './grade';
 import { awardsInLap, deriveProgress, nextCharacter, shiftImpact, todaySlot, type DayRecord } from './progress';
@@ -291,5 +292,21 @@ describe('画像パック', () => {
     ['空', {}],
   ])('%sは拒否する', (_, images) => {
     expect(() => parseImagePack(pack(images))).toThrow(ImportError);
+  });
+});
+
+describe('合言葉つき画像パック', () => {
+  const ITER = 1000; // テストを速くするため回数を減らす
+
+  it('正しい合言葉で元に戻る。大文字化や前後の空白は吸収する', async () => {
+    const pack = await encryptPack('秘密のデータ', 'abcd-efgh', ITER);
+    expect(pack.data).not.toContain('秘密');
+    expect(await decryptPack(pack, 'abcd-efgh')).toBe('秘密のデータ');
+    expect(await decryptPack(pack, ' Abcd-efgh ')).toBe('秘密のデータ');
+  });
+
+  it('違う合言葉では復号できない', async () => {
+    const pack = await encryptPack('秘密のデータ', 'abcd-efgh', ITER);
+    await expect(decryptPack(pack, 'zzzz-zzzz')).rejects.toBeInstanceOf(WrongPassphraseError);
   });
 });

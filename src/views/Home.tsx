@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ImagePackButton } from '../components/ImagePackButton';
+import { ImageUnlock } from '../components/ImageUnlock';
 import { awardMessage } from '../components/messages';
 import { Portrait } from '../components/Portrait';
 import { StampCard } from '../components/StampCard';
@@ -94,8 +94,8 @@ export function Home({ onOpen }: { onOpen(view: 'records' | 'complete'): void })
 
       {Object.keys(images).length === 0 && !settings.imageHintDismissed && (
         <div className="image-hint" data-testid="image-hint">
-          <p>今は仮画像です。キャラ画像は画像パックで表示できます</p>
-          <ImagePackButton className="btn btn-sm btn-primary" />
+          <p>合言葉を入れるとキャラクターが表示されます（端末ごとに1回）</p>
+          <ImageUnlock />
           <button className="icon-btn" onClick={() => void updateSettings({ imageHintDismissed: true })} aria-label="この案内を閉じる">
             ×
           </button>

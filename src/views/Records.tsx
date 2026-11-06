@@ -2,6 +2,7 @@ import { useRef, useState, type ChangeEvent } from 'react';
 import { ConfirmDialog, Modal } from '../components/Modal';
 import { TOTAL_CHARACTERS } from '../domain/characters';
 import { ImagePackButton } from '../components/ImagePackButton';
+import { ImageUnlock } from '../components/ImageUnlock';
 import { ImportError, backupFileName, parseBackup, planMerge, type MergePlan } from '../domain/backup';
 import { formatJa } from '../domain/date';
 import { gradeFor } from '../domain/grade';
@@ -129,8 +130,9 @@ export function Records({ onOpenComplete }: { onOpenComplete(): void }) {
         <h3>キャラクター画像</h3>
         <p className="panel-note" data-testid="image-status">
           {imageCount > 0 ? `この端末に${imageCount}人分の画像が入っています。` : '現在は仮画像を表示しています。'}
-          公開版には画像を含めていません。手元の画像パック（JSON）を読み込むと、この端末の中だけで表示します。
+          合言葉を入れると、この端末にキャラクター画像を保存して表示します。
         </p>
+        {imageCount === 0 && <ImageUnlock />}
         <div className="panel-actions">
           <ImagePackButton />
           {imageCount > 0 && <button className="btn" onClick={() => setConfirm('clear-images')}>仮画像に戻す</button>}
