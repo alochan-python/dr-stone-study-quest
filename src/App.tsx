@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { DayEditor } from './components/DayEditor';
+import { ImageLinkUnlock } from './components/ImageUnlock';
 import { TOTAL_CHARACTERS } from './domain/characters';
 import { useApp } from './state/store';
 import { CalendarView } from './views/CalendarView';
@@ -46,6 +47,7 @@ export function App() {
 
   return (
     <div className="app">
+      <ImageLinkUnlock />
       <nav className="tabbar" aria-label="メニュー">
         {TABS.map((tab) => (
           <button

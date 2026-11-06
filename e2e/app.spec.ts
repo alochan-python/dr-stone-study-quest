@@ -60,6 +60,16 @@ test('合言葉でキャラクター画像を表示でき、再読み込み後�
   await expect(page.locator('.zukan-grid img.portrait')).toHaveCount(50);
 });
 
+test('合言葉つきリンクを開くだけで画像が表示され、URLから合言葉が消える', async ({ page }) => {
+  test.skip(!existsSync(PASS_FILE), '合言葉はこのPCにしかない');
+  await page.goto(`./#key=${readFileSync(PASS_FILE, 'utf8').trim()}`);
+  await expect(page.getByText('50人のキャラクターを表示しました')).toBeVisible();
+  await expect(card(page).locator('img.portrait')).toHaveAttribute('alt', 'ブロディ');
+  expect(page.url()).not.toContain('key=');
+  await page.reload();
+  await expect(card(page).locator('img.portrait')).toHaveAttribute('alt', 'ブロディ');
+});
+
 test('きろくタブから画像パックのファイルも読み込める', async ({ page }) => {
   const pack = JSON.stringify({
     app: 'dr-stone-study-quest',
