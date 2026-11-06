@@ -89,19 +89,24 @@ test('きろくタブから画像パックのファイルも読み込める', as
   await expect(card(page).locator('img.portrait')).toHaveAttribute('alt', 'ブロディ');
 });
 
-test('案内を閉じると再表示されない', async ({ page }) => {
+test('画像が入るまで合言葉の欄は再読み込みしても表示され続ける', async ({ page }) => {
   await page.goto('./');
-  await page.getByRole('button', { name: 'この案内を閉じる' }).click();
-  await expect(page.getByTestId('image-hint')).toHaveCount(0);
-  await page.waitForTimeout(300); // 設定の書き込み完了を待つ
+  await expect(page.getByLabel('合言葉')).toBeVisible();
   await page.reload();
-  await expect(card(page)).toBeVisible();
-  await expect(page.getByTestId('image-hint')).toHaveCount(0);
+  await expect(page.getByLabel('合言葉')).toBeVisible();
+  await tab(page, 'きろく').click();
+  await expect(page.getByLabel('合言葉')).toBeVisible();
+  await expect(page.getByTestId('build-id')).toContainText('版:');
 });
 
 test('スクロールせずに入力と保存へ届く（縦長スマホ以上）', async ({ page }) => {
   await page.goto('./');
-  await page.getByRole('button', { name: 'この案内を閉じる' }).click();
+  // 案内は画像が入ると消えるので、ふだんの状態にしてから測る
+  const pack = JSON.stringify({ app: 'dr-stone-study-quest', type: 'image-pack', version: 1, images: { 50: 'data:image/png;base64,AAAA' } });
+  await tab(page, 'きろく').click();
+  await page.getByTestId('image-file').setInputFiles({ name: 'p.json', mimeType: 'application/json', buffer: Buffer.from(pack) });
+  await tab(page, 'ホーム').click();
+  await expect(page.getByTestId('image-hint')).toHaveCount(0);
   const box = await save(page).boundingBox();
   const navTop = (await page.getByRole('navigation').boundingBox())!.y;
   const viewport = page.viewportSize()!;

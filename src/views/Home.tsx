@@ -13,7 +13,7 @@ import { useApp } from '../state/store';
 const BACKUP_REMINDER_DAYS = 14;
 
 export function Home({ onOpen }: { onOpen(view: 'records' | 'complete'): void }) {
-  const { today, progress, draft, setDraft, saveDay, notify, settings, updateSettings, images } = useApp();
+  const { today, progress, draft, setDraft, saveDay, notify, settings, images } = useApp();
   const { stats } = progress;
   const slot = todaySlot(progress, today);
   const next = nextCharacter(progress);
@@ -92,13 +92,10 @@ export function Home({ onOpen }: { onOpen(view: 'records' | 'complete'): void })
         </dl>
       </header>
 
-      {Object.keys(images).length === 0 && !settings.imageHintDismissed && (
+      {Object.keys(images).length === 0 && (
         <div className="image-hint" data-testid="image-hint">
           <p>合言葉を入れるとキャラクターが表示されます（端末ごとに1回）</p>
           <ImageUnlock />
-          <button className="icon-btn" onClick={() => void updateSettings({ imageHintDismissed: true })} aria-label="この案内を閉じる">
-            ×
-          </button>
         </div>
       )}
 

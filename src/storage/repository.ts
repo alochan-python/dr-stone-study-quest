@@ -6,7 +6,6 @@ export interface Settings {
   sound: boolean;
   lastBackupAt: string | null;
   completionSeen: boolean;
-  imageHintDismissed: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -14,7 +13,6 @@ export const DEFAULT_SETTINGS: Settings = {
   sound: true,
   lastBackupAt: null,
   completionSeen: false,
-  imageHintDismissed: false,
 };
 
 export interface Draft {

@@ -170,6 +170,8 @@ export function Records({ onOpenComplete }: { onOpenComplete(): void }) {
 
       <p className="fine-print">
         非公式の個人用アプリです。原作の権利は各権利者に帰属します。記録はサーバーへ送信されず、利用料金もかかりません。
+        <br />
+        <span data-testid="build-id">版: {__BUILD_ID__}</span>
       </p>
 
       {incoming && (
