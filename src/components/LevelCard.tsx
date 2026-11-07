@@ -15,7 +15,7 @@ export function LevelCard({ lap, collected }: { lap: number; collected: number }
     <>
       <button className="level-card" onClick={() => setOpen(true)} data-testid="level-card">
         <span className="level-head">
-          <span className="level-badge">レベル{current.level}</span>
+          <span className="level-num" data-testid="level-num"><small>レベル</small>{current.level}</span>
           <span className="level-name">{current.name}</span>
           <span className="level-more" aria-hidden="true">›</span>
         </span>

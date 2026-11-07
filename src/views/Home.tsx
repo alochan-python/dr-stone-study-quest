@@ -84,11 +84,16 @@ export function Home({ onOpen }: { onOpen(view: 'records' | 'complete'): void })
         <h1>
           <span className="brand">Dr.STONE</span> 勉強50日チャレンジ
         </h1>
+        <div className="hero-row">
+          <dl className="hero-streak">
+            <div className={`chip chip-fire${stats.currentStreak >= 100 ? ' is-long' : ''}`}>
+              <dt>連続</dt>
+              <dd data-testid="current-streak">{stats.currentStreak}<small>日</small></dd>
+            </div>
+          </dl>
+          <LevelCard lap={slot.lap} collected={slot.award ? slot.position : slot.position - 1} />
+        </div>
         <dl className="chips">
-          <div className="chip chip-fire">
-            <dt>連続</dt>
-            <dd data-testid="current-streak">{stats.currentStreak}<small>日</small></dd>
-          </div>
           <div className="chip">
             <dt>累計</dt>
             <dd data-testid="achieved-days">{stats.achievedDays}<small>日</small></dd>
@@ -135,14 +140,6 @@ export function Home({ onOpen }: { onOpen(view: 'records' | 'complete'): void })
           </div>
         </div>
       )}
-      <LevelCard lap={slot.lap} collected={slot.award ? slot.position : slot.position - 1} />
-
-      {stats.achievedDays >= TOTAL_CHARACTERS && (
-        <button className="banner banner-gold" onClick={() => onOpen('complete')}>
-          50日達成！ 記念画面を見る ›
-        </button>
-      )}
-
       <div className="home-grid">
         <section className="stage" aria-label="今日のキャラクター">
           <p className="stage-date">
@@ -193,6 +190,12 @@ export function Home({ onOpen }: { onOpen(view: 'records' | 'complete'): void })
           )}
         </section>
       </div>
+
+      {stats.achievedDays >= TOTAL_CHARACTERS && (
+        <button className="banner banner-gold" onClick={() => onOpen('complete')}>
+          50日達成！ 記念画面を見る ›
+        </button>
+      )}
     </div>
   );
 }

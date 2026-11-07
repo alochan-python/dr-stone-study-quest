@@ -307,3 +307,41 @@ test('ブラウザを完全に終了しても、記録と保存前の入力と�
     rmSync(profile, { recursive: true, force: true });
   }
 });
+
+test('連続日数とレベルが大きく、3桁の日数と長いレベル名でも崩れない', async ({ page }, info) => {
+  await setDate(page, '2026-11-06');
+  const records = Array.from({ length: 299 }, (_, i) => ({
+    date: new Date(Date.UTC(2026, 10, 5 - i)).toISOString().slice(0, 10),
+    homework: false,
+    problems: 1,
+    updatedAt: '2026-01-01T00:00:00.000Z',
+  }));
+  await page.goto('./');
+  const pack = JSON.stringify({ app: 'dr-stone-study-quest', type: 'image-pack', version: 1, images: { 50: 'data:image/png;base64,AAAA' } });
+  await tab(page, 'きろく').click();
+  await page.getByTestId('image-file').setInputFiles({ name: 'p.json', mimeType: 'application/json', buffer: Buffer.from(pack) });
+  await page.getByTestId('backup-file').setInputFiles({
+    name: 'backup.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify({ app: 'dr-stone-study-quest', type: 'backup', schemaVersion: 1, records })),
+  });
+  await page.getByRole('button', { name: '足りない日だけ追加' }).click();
+  await tab(page, 'ホーム').click();
+  await page.getByRole('button', { name: /レベル6を続ける|ホーム/ }).first().click();
+
+  const streak = page.getByTestId('current-streak');
+  const level = page.getByTestId('level-num');
+  await expect(streak).toHaveText(/^299/);
+  await expect(level).toHaveText('レベル6');
+  await expect(page.getByTestId('level-card')).toContainText('コンピュータ・情報革命レベル');
+  const px = (el: Element) => parseFloat(getComputedStyle(el).fontSize);
+  expect(await streak.evaluate(px)).toBeGreaterThanOrEqual(50);
+  expect(await level.evaluate(px)).toBeGreaterThanOrEqual(38);
+  await expectNoSideScroll(page);
+
+  await page.screenshot({ path: `test-results/shots/${info.project.name}-hero.png` });
+  const box = await save(page).boundingBox();
+  const navTop = (await page.getByRole('navigation').boundingBox())!.y;
+  const viewport = page.viewportSize()!;
+  expect(box!.y + box!.height).toBeLessThanOrEqual(viewport.width < 760 ? navTop : viewport.height);
+});
