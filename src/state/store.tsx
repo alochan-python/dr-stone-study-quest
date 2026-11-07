@@ -26,6 +26,7 @@ interface AppState {
   setDraft(draft: Draft | null): void;
   saveDay(date: string, homework: boolean, problems: number): Promise<boolean>;
   deleteDay(date: string): Promise<boolean>;
+  rescueDays(dates: string[]): Promise<boolean>;
   updateSettings(patch: Partial<Settings>): Promise<void>;
   exportBackup(): string;
   markBackedUp(): Promise<void>;
@@ -64,6 +65,8 @@ export function AppProvider({
   const [attempt, setAttempt] = useState(0);
   const [today, setToday] = useState(() => todayInTokyo());
   const [records, setRecords] = useState<DayRecord[]>([]);
+  const recordsRef = useRef(records);
+  recordsRef.current = records;
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
@@ -128,7 +131,7 @@ export function AppProvider({
     };
   }, []);
 
-  const progress = useMemo(() => deriveProgress(records, today), [records, today]);
+  const progress = useMemo(() => deriveProgress(records, today, settings.rescueInterval), [records, today, settings.rescueInterval]);
 
   const setDraft = useCallback((next: Draft | null) => {
     setDraftState(next);
@@ -153,11 +156,14 @@ export function AppProvider({
   const saveDay = useCallback<AppState['saveDay']>(
     async (date, homework, problems) => {
       if (settingsRef.current.sound) unlockAudio();
+      const normalized = normalizeProblems(problems);
+      const keepRescue = normalized === 0 && recordsRef.current.some((r) => r.date === date && r.rescue);
       const record: DayRecord = {
         date,
         homework,
-        problems: normalizeProblems(problems),
+        problems: normalized,
         updatedAt: new Date().toISOString(),
+        ...(keepRescue ? { rescue: true } : {}),
       };
       if (date > todayInTokyo()) {
         setNotice({ kind: 'error', text: '未来の日付には記録できません。' });
@@ -181,6 +187,21 @@ export function AppProvider({
 
   const deleteDay = useCallback<AppState['deleteDay']>(
     (date) => guarded((repo) => repo.deleteRecord(date)),
+    [guarded],
+  );
+
+  const rescueDays = useCallback<AppState['rescueDays']>(
+    async (dates) => {
+      if (settingsRef.current.sound) unlockAudio();
+      const updatedAt = new Date().toISOString();
+      const next = dates.map((date): DayRecord => {
+        const existing = recordsRef.current.find((r) => r.date === date);
+        return { date, homework: existing?.homework ?? false, problems: 0, updatedAt, rescue: true };
+      });
+      const ok = await guarded((repo) => repo.putRecords(next));
+      if (ok && settingsRef.current.sound) playConfirmSound(gradeFor(1));
+      return ok;
+    },
     [guarded],
   );
 
@@ -222,8 +243,9 @@ export function AppProvider({
     setDraft,
     saveDay,
     deleteDay,
+    rescueDays,
     updateSettings,
-    exportBackup: () => buildBackup(records),
+    exportBackup: () => buildBackup(records, new Date(), settings.rescueInterval),
     markBackedUp: () => updateSettings({ lastBackupAt: new Date().toISOString() }),
     applyMerge: (plan) => guarded(async (repo) => repo.addRecords(planMerge(records, plan.added).added)),
     replaceAll: (next) => replaceWith(next, 'バックアップで置き換える前'),

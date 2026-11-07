@@ -1,11 +1,12 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
-import type { DayRecord } from '../domain/progress';
+import { DEFAULT_RESCUE_INTERVAL, type DayRecord } from '../domain/progress';
 
 export interface Settings {
   animations: boolean;
   sound: boolean;
   lastBackupAt: string | null;
   completionSeen: boolean;
+  rescueInterval: number;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -13,6 +14,7 @@ export const DEFAULT_SETTINGS: Settings = {
   sound: true,
   lastBackupAt: null,
   completionSeen: false,
+  rescueInterval: DEFAULT_RESCUE_INTERVAL,
 };
 
 export interface Draft {
@@ -45,6 +47,12 @@ export class Repository {
 
   async putRecord(record: DayRecord): Promise<void> {
     await this.db.put('records', record);
+  }
+
+  async putRecords(records: DayRecord[]): Promise<void> {
+    const tx = this.db.transaction('records', 'readwrite');
+    for (const r of records) tx.store.put(r);
+    await tx.done;
   }
 
   async deleteRecord(date: string): Promise<void> {

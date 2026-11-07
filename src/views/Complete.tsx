@@ -1,6 +1,7 @@
 import { Portrait } from '../components/Portrait';
 import { TOTAL_CHARACTERS } from '../domain/characters';
 import { formatJa } from '../domain/date';
+import { LEVELS, lapLabel } from '../domain/levels';
 import { useApp } from '../state/store';
 
 export function Complete({ onBack }: { onBack(): void }) {
@@ -23,6 +24,7 @@ export function Complete({ onBack }: { onBack(): void }) {
         <p className="complete-kicker">ALL {TOTAL_CHARACTERS} CHARACTERS</p>
         <h2>50日達成！</h2>
         <p>{TOTAL_CHARACTERS}人のキャラクターが全員そろいました</p>
+        <p>{LEVELS[0].name}クリア！ 次は{LEVELS[1].name}です</p>
       </header>
       <ul className="complete-crowd" aria-label="50人のキャラクター">
         {firstLap.map((a) => (
@@ -36,7 +38,7 @@ export function Complete({ onBack }: { onBack(): void }) {
         <div className="stat"><dt>最長連続記録</dt><dd data-testid="complete-longest">{progress.stats.longestStreak}<small>日</small></dd></div>
       </dl>
       <button className="btn btn-save" onClick={onBack}>
-        {progress.stats.lap >= 2 ? `${progress.stats.lap}周目を続ける` : '特別枠の2周目へ進む'}
+        {progress.stats.lap >= 2 ? `${lapLabel(progress.stats.lap)}を続ける` : 'レベル2へ進む'}
       </button>
       <section className="panel">
         <h3>50日間の達成履歴</h3>

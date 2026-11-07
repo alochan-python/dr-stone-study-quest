@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { characterAtOrder, lapAtOrder } from '../domain/characters';
 import { formatJaFull } from '../domain/date';
 import { gradeFor } from '../domain/grade';
+import { lapLabel } from '../domain/levels';
 import { deriveProgress, shiftImpact } from '../domain/progress';
 import { useApp } from '../state/store';
 import { ConfirmDialog, Modal } from './Modal';
@@ -12,6 +13,7 @@ import { awardMessage } from './messages';
 export function DayEditor({ date, onClose }: { date: string; onClose(): void }) {
   const { progress, records, today, draft, saveDay, deleteDay, notify } = useApp();
   const record = progress.recordByDate.get(date);
+  const rescued = progress.rescuedDates.has(date);
   const source = draft?.date === date ? draft : record;
   const [homework, setHomework] = useState(source?.homework ?? false);
   const [problems, setProblems] = useState(source?.problems ?? 0);
@@ -47,7 +49,11 @@ export function DayEditor({ date, onClose }: { date: string; onClose(): void }) 
   return (
     <Modal title={`${formatJaFull(date)}の記録`} onClose={onClose}>
       <p className="editor-state">
-        {record ? (record.problems > 0 ? '自主勉強：達成' : '自主勉強：0問で記録') : 'まだ入力していません'}
+        {rescued
+          ? '🧪 お助けアイテムを使った日です。1問以上に直すか未入力に戻すと、アイテムが手元に戻ります'
+          : record
+          ? (record.problems > 0 ? '自主勉強：達成' : '自主勉強：0問で記録')
+          : 'まだ入力していません'}
       </p>
       <label className="homework-check">
         <input type="checkbox" checked={homework} onChange={(e) => setHomework(e.target.checked)} />
@@ -60,7 +66,7 @@ export function DayEditor({ date, onClose }: { date: string; onClose(): void }) 
             <b>{preview.character.rank}位 {preview.character.name}</b>
             <span>
               {gradeFor(problems).label}スタンプ
-              {lapAtOrder(preview.order) >= 2 ? `（${lapAtOrder(preview.order)}周目）` : ''}
+              {lapAtOrder(preview.order) >= 2 ? `（${lapLabel(lapAtOrder(preview.order))}）` : ''}
             </span>
           </>
         ) : (

@@ -1,5 +1,7 @@
-import { expect, test, type Page } from '@playwright/test';
-import { existsSync, readFileSync } from 'node:fs';
+import { chromium, expect, test, type Page } from '@playwright/test';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 const tab = (page: Page, name: string) => page.getByRole('navigation').getByRole('button', { name });
 const plusOne = (page: Page) => page.getByRole('button', { name: '1問増やす' });
@@ -245,4 +247,63 @@ test('初回アクセス後はオフラインでも起動・記録できる', as
   await page.reload();
   await expect(card(page)).toHaveAttribute('data-grade', '銅');
   await context.setOffline(false);
+});
+
+test('お助けアイテムを使う画面が崩れず、連続がつながる', async ({ page }, info) => {
+  await setDate(page, '2026-11-06');
+  const records = Array.from({ length: 20 }, (_, i) => {
+    const d = new Date(Date.UTC(2026, 9, 16 + i)).toISOString().slice(0, 10);
+    return { date: d, homework: false, problems: 1, updatedAt: '2026-01-01T00:00:00.000Z' };
+  });
+  await page.goto('./');
+  await tab(page, 'きろく').click();
+  await page.getByTestId('backup-file').setInputFiles({
+    name: 'backup.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify({ app: 'dr-stone-study-quest', type: 'backup', schemaVersion: 1, records })),
+  });
+  await page.getByRole('button', { name: '足りない日だけ追加' }).click();
+  await tab(page, 'ホーム').click();
+  await expect(page.getByTestId('rescue-offer')).toBeVisible();
+  await expectNoSideScroll(page);
+  await page.screenshot({ path: `test-results/shots/${info.project.name}-rescue.png` });
+  await page.getByRole('button', { name: /アイテムを使う/ }).click();
+  await expect(page.getByTestId('current-streak')).toHaveText(/^20/);
+  await page.getByTestId('level-card').click();
+  await expect(page.getByTestId('level-list')).toContainText('石斧');
+  await expectNoSideScroll(page);
+  await page.screenshot({ path: `test-results/shots/${info.project.name}-levels.png` });
+});
+
+test('ブラウザを完全に終了しても、記録と保存前の入力と設定が残る', async ({ browserName }, info) => {
+  test.skip(browserName !== 'chromium', '同じ保存先で再起動できるのは Chromium のみ');
+  const baseURL = info.project.use.baseURL!;
+  const profile = mkdtempSync(join(tmpdir(), 'dr-stone-profile-'));
+  try {
+    let context = await chromium.launchPersistentContext(profile, { baseURL });
+    let page = context.pages()[0] ?? (await context.newPage());
+    await page.goto('./');
+    await plusOne(page).click();
+    await save(page).click();
+    await expect(page.getByTestId('achieved-days')).toHaveText(/^1/);
+    await page.getByRole('button', { name: '1問増やす' }).click();
+    await page.getByRole('checkbox', { name: '宿題を終えた' }).check();
+    await expect(page.getByTestId('autosave-note')).toBeVisible();
+    await tab(page, 'きろく').click();
+    await page.getByTestId('rescue-interval').fill('7');
+    await page.waitForTimeout(300);
+    await context.close();
+
+    context = await chromium.launchPersistentContext(profile, { baseURL });
+    page = context.pages()[0] ?? (await context.newPage());
+    await page.goto('./');
+    await expect(page.getByTestId('achieved-days')).toHaveText(/^1/);
+    await expect(card(page)).toHaveAttribute('data-grade', '銀');
+    await expect(page.getByRole('checkbox', { name: '宿題を終えた' })).toBeChecked();
+    await tab(page, 'きろく').click();
+    await expect(page.getByTestId('rescue-interval')).toHaveValue('7');
+    await context.close();
+  } finally {
+    rmSync(profile, { recursive: true, force: true });
+  }
 });

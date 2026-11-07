@@ -1,5 +1,6 @@
 import type { Character } from '../domain/characters';
 import type { Grade } from '../domain/grade';
+import { lapLabel } from '../domain/levels';
 import { Portrait } from './Portrait';
 
 function SealText({ grade }: { grade: Grade }) {
@@ -34,7 +35,7 @@ export function StampCard({
       data-grade={grade.label}
     >
       {grade.sparkle >= 2 && <div className="rays" aria-hidden="true" />}
-      {lap >= 2 && <div className="lap-ribbon">{lap}周目 特別枠</div>}
+      {lap >= 2 && <div className="lap-ribbon">{lapLabel(lap)} 特別枠</div>}
       <div className="hex-stack">
         <div className="hex-frame">
           <Portrait character={character} locked={!earned} />

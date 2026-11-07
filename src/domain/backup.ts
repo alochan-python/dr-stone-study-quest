@@ -1,6 +1,6 @@
 import { isValidDate } from './date';
 import { MAX_PROBLEMS } from './grade';
-import type { DayRecord } from './progress';
+import { isValidRescueInterval, type DayRecord } from './progress';
 
 export const APP_ID = 'dr-stone-study-quest';
 const SCHEMA_VERSION = 1;
@@ -8,10 +8,10 @@ const MAX_IMAGE_BYTES = 40 * 1024 * 1024;
 
 export class ImportError extends Error {}
 
-export function buildBackup(records: DayRecord[], now: Date = new Date()): string {
+export function buildBackup(records: DayRecord[], now: Date = new Date(), rescueInterval?: number): string {
   const sorted = [...records].sort((a, b) => a.date.localeCompare(b.date));
   return JSON.stringify(
-    { app: APP_ID, type: 'backup', schemaVersion: SCHEMA_VERSION, exportedAt: now.toISOString(), records: sorted },
+    { app: APP_ID, type: 'backup', schemaVersion: SCHEMA_VERSION, exportedAt: now.toISOString(), rescueInterval, records: sorted },
     null,
     2,
   );
@@ -54,13 +54,21 @@ export function parseBackup(text: string, today: string): DayRecord[] {
     if (!Number.isInteger(r.problems) || r.problems! < 0 || r.problems! > MAX_PROBLEMS) {
       throw new ImportError(`${r.date} の問題数が正しくありません。`);
     }
+    if (r.rescue !== undefined && typeof r.rescue !== 'boolean') throw new ImportError(`${r.date} のお助けアイテムの値が正しくありません。`);
     return {
       date: r.date,
       homework: r.homework,
       problems: r.problems!,
       updatedAt: typeof r.updatedAt === 'string' ? r.updatedAt : new Date(0).toISOString(),
+      ...(r.rescue && r.problems === 0 ? { rescue: true } : {}),
     };
   });
+}
+
+/** 古いバックアップには入っていないので、そのときは null */
+export function readRescueInterval(text: string): number | null {
+  const value = parseJson(text).rescueInterval;
+  return isValidRescueInterval(value) ? value : null;
 }
 
 export interface MergePlan {
@@ -80,7 +88,7 @@ export function planMerge(existing: DayRecord[], incoming: DayRecord[]): MergePl
   for (const r of incoming) {
     const current = byDate.get(r.date);
     if (!current) added.push(r);
-    else if (current.homework === r.homework && current.problems === r.problems) identical++;
+    else if (current.homework === r.homework && current.problems === r.problems && !current.rescue === !r.rescue) identical++;
     else conflicts.push({ existing: current, incoming: r });
   }
   return { merged: [...existing, ...added], added, identical, conflicts };

@@ -1,19 +1,21 @@
 import { useEffect, useRef, useState } from 'react';
 import { ImageUnlock } from '../components/ImageUnlock';
-import { awardMessage } from '../components/messages';
+import { LevelCard } from '../components/LevelCard';
+import { awardMessage, milestoneMessage } from '../components/messages';
 import { Portrait } from '../components/Portrait';
 import { StampCard } from '../components/StampCard';
 import { Stepper } from '../components/Stepper';
 import { TOTAL_CHARACTERS } from '../domain/characters';
 import { formatJa, formatJaFull } from '../domain/date';
 import { gradeFor } from '../domain/grade';
+import { lapLabel } from '../domain/levels';
 import { nextCharacter, todaySlot } from '../domain/progress';
 import { useApp } from '../state/store';
 
 const BACKUP_REMINDER_DAYS = 14;
 
 export function Home({ onOpen }: { onOpen(view: 'records' | 'complete'): void }) {
-  const { today, progress, draft, setDraft, saveDay, notify, settings, images } = useApp();
+  const { today, progress, draft, setDraft, saveDay, rescueDays, notify, settings, images } = useApp();
   const { stats } = progress;
   const slot = todaySlot(progress, today);
   const next = nextCharacter(progress);
@@ -36,9 +38,18 @@ export function Home({ onOpen }: { onOpen(view: 'records' | 'complete'): void })
   const [saving, setSaving] = useState(false);
   const save = async () => {
     setSaving(true);
+    const newlyAchieved = !slot.award && problems > 0;
     const ok = await saveDay(today, homework, problems);
     setSaving(false);
-    if (ok) notify({ kind: 'success', text: awardMessage(homework, problems, slot.character.name) });
+    if (!ok) return;
+    const milestone = newlyAchieved ? milestoneMessage(slot.lap, slot.position, stats.currentStreak + 1, settings.rescueInterval) : '';
+    notify({ kind: 'success', text: `${milestone} ${awardMessage(homework, problems, slot.character.name)}`.trim() });
+  };
+
+  const applyRescue = async () => {
+    if (await rescueDays(progress.pendingRescue)) {
+      notify({ kind: 'success', text: 'お助けアイテムを使いました。連続記録がつながりました！' });
+    }
   };
 
   const resolveStale = async (keep: boolean) => {
@@ -99,6 +110,19 @@ export function Home({ onOpen }: { onOpen(view: 'records' | 'complete'): void })
         </div>
       )}
 
+      {progress.pendingRescue.length > 0 && (
+        <div className="banner banner-rescue" data-testid="rescue-offer">
+          <p>
+            🧪 {progress.pendingRescue.map(formatJa).join('・')}はお休みでした。今日のうちならお助けアイテムで連続記録をつなげます
+          </p>
+          <div className="banner-actions">
+            <button className="btn btn-primary btn-sm" onClick={() => void applyRescue()}>
+              アイテムを使う（{progress.pendingRescue.length}個）
+            </button>
+          </div>
+        </div>
+      )}
+
       {staleDraft && (
         <div className="banner" role="alert">
           <p>
@@ -111,6 +135,8 @@ export function Home({ onOpen }: { onOpen(view: 'records' | 'complete'): void })
           </div>
         </div>
       )}
+      <LevelCard lap={slot.lap} collected={slot.award ? slot.position : slot.position - 1} />
+
       {stats.achievedDays >= TOTAL_CHARACTERS && (
         <button className="banner banner-gold" onClick={() => onOpen('complete')}>
           50日達成！ 記念画面を見る ›
@@ -122,7 +148,7 @@ export function Home({ onOpen }: { onOpen(view: 'records' | 'complete'): void })
           <p className="stage-date">
             {formatJa(today)}
             <span className="stage-count">
-              {slot.lap >= 2 ? `${slot.lap}周目 ` : ''}{slot.position}/{TOTAL_CHARACTERS}人目
+              {lapLabel(slot.lap)} {slot.position}/{TOTAL_CHARACTERS}人目
             </span>
           </p>
           <div className="stage-card" key={flash}>
@@ -148,10 +174,15 @@ export function Home({ onOpen }: { onOpen(view: 'records' | 'complete'): void })
           <button className={`btn btn-save${dirty ? ' is-dirty' : ''}`} onClick={() => void save()} disabled={saving}>
             {dirty ? '今日の記録を保存' : record ? '保存済み（もう一度保存）' : '今日の記録を保存'}
           </button>
+          {dirty && (
+            <p className="autosave-note" data-testid="autosave-note">
+              入力は自動で端末に保存され、閉じても元に戻ります。スタンプは保存ボタンで確定します
+            </p>
+          )}
           <div className="tomorrow">
             <span className="tomorrow-thumb"><Portrait character={slot.tomorrow.character} locked /></span>
             <p>
-              <small>明日の予告{slot.tomorrow.lap >= 2 ? `（${slot.tomorrow.lap}周目）` : ''}</small>
+              <small>明日の予告{slot.tomorrow.lap >= 2 ? `（${lapLabel(slot.tomorrow.lap)}）` : ''}</small>
               <b data-testid="tomorrow-character">{slot.tomorrow.character.rank}位 {slot.tomorrow.character.name}</b>
             </p>
           </div>

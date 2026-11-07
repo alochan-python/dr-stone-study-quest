@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { ImportError, buildBackup, parseBackup, parseImagePack, planMerge } from './backup';
+import { ImportError, buildBackup, parseBackup, parseImagePack, planMerge, readRescueInterval } from './backup';
 import { CHARACTERS, characterAtOrder } from './characters';
 import { WrongPassphraseError, decryptPack, encryptPack } from './encryptedPack';
 import { addDays, isValidDate, monthCells, todayInTokyo } from './date';
 import { gradeFor, normalizeProblems } from './grade';
+import { LEVELS, lapLabel, levelForLap } from './levels';
 import { awardsInLap, deriveProgress, nextCharacter, shiftImpact, todaySlot, type DayRecord } from './progress';
 import { chimeNotes } from './sound';
 
@@ -218,6 +219,119 @@ describe('50人達成後', () => {
     expect(awardsInLap(p, 2).size).toBe(3);
     expect(awardsInLap(p, 2).get(50)?.date).toBe(addDays(D1, 50));
     expect(awardsInLap(p, 1).get(50)?.date).toBe(D1);
+  });
+});
+
+describe('文明レベル', () => {
+  it('7段階あり、50人ごとに進み、8周目以降はレベル7のまま', () => {
+    expect(LEVELS.map((l) => l.level)).toEqual([1, 2, 3, 4, 5, 6, 7]);
+    expect(levelForLap(1).name).toBe('石器時代レベル');
+    expect(levelForLap(7).name).toBe('宇宙開発・現代・未来レベル');
+    expect(levelForLap(9).level).toBe(7);
+    expect(lapLabel(2)).toBe('レベル2');
+    expect(lapLabel(8)).toBe('レベル7・8周目');
+  });
+
+  it('50人目まではレベル1、51人目からレベル2', () => {
+    const fifty = deriveProgress(run(D1, 50), addDays(D1, 49));
+    expect(todaySlot(fifty, addDays(D1, 49)).lap).toBe(1);
+    const next = deriveProgress(run(D1, 50), addDays(D1, 50));
+    expect(todaySlot(next, addDays(D1, 50))).toMatchObject({ lap: 2, position: 1 });
+  });
+});
+
+describe('お助けアイテム', () => {
+  const rescue = (date: string, homework = false): DayRecord => ({ ...rec(date, 0, homework), rescue: true });
+  const day = (i: number) => addDays(D1, i);
+
+  it('19日では0個、連続20日で1個、40日で2個', () => {
+    expect(deriveProgress(run(D1, 19), day(18)).stats).toMatchObject({ rescueItems: 0, nextRescueIn: 1 });
+    expect(deriveProgress(run(D1, 20), day(19)).stats).toMatchObject({ rescueItems: 1, nextRescueIn: 20 });
+    expect(deriveProgress(run(D1, 40), day(39)).stats.rescueItems).toBe(2);
+  });
+
+  it('日数の設定を変えると、もらえる数が計算し直される', () => {
+    expect(deriveProgress(run(D1, 20), day(19), 10).stats).toMatchObject({ rescueItems: 2, nextRescueIn: 10 });
+    expect(deriveProgress(run(D1, 20), day(19), 30).stats).toMatchObject({ rescueItems: 0, nextRescueIn: 10 });
+  });
+
+  it('連続が途切れた日数はアイテムに数えない', () => {
+    const p = deriveProgress([...run(D1, 10), ...run(day(11), 10)], day(20));
+    expect(p.stats.rescueItems).toBe(0);
+    expect(p.stats.currentStreak).toBe(10);
+  });
+
+  it('休んだ翌日に使える。達成済みでも今日のうちは使える', () => {
+    const records = run(D1, 20);
+    expect(deriveProgress(records, day(21)).pendingRescue).toEqual([day(20)]);
+    expect(deriveProgress([...records, rec(day(21), 1)], day(21)).pendingRescue).toEqual([day(20)]);
+  });
+
+  it('使うと連続がつながり、アイテムが減る。その日は日数に足さない', () => {
+    const records = [...run(D1, 20), rescue(day(20))];
+    const p = deriveProgress(records, day(21));
+    expect(p.stats).toMatchObject({ currentStreak: 20, rescueItems: 0, achievedDays: 20 });
+    expect(p.rescuedDates.has(day(20))).toBe(true);
+    expect(p.pendingRescue).toEqual([]);
+    expect(p.awardByDate.has(day(20))).toBe(false);
+    const after = deriveProgress([...records, rec(day(21), 1)], day(21));
+    expect(after.stats).toMatchObject({ currentStreak: 21, longestStreak: 21, rescueItems: 0 });
+  });
+
+  it('使った日を挟んでも同じ節目で二重にもらえない', () => {
+    const records = [...run(D1, 20), rescue(day(20)), ...run(day(21), 19)];
+    expect(deriveProgress(records, day(39)).stats).toMatchObject({ currentStreak: 39, rescueItems: 0 });
+    expect(deriveProgress([...records, rec(day(40), 1)], day(40)).stats).toMatchObject({ currentStreak: 40, rescueItems: 1 });
+  });
+
+  it('宿題だけの日にも使える', () => {
+    const records = [...run(D1, 20), rec(day(20), 0, true)];
+    expect(deriveProgress(records, day(21)).pendingRescue).toEqual([day(20)]);
+  });
+
+  it('翌日を過ぎると使えない', () => {
+    const records = [...run(D1, 20), rec(day(21), 1)];
+    expect(deriveProgress(records, day(22)).pendingRescue).toEqual([]);
+  });
+
+  it('アイテムが足りない空白には使えない。足りれば2日分でも使える', () => {
+    expect(deriveProgress(run(D1, 20), day(22)).pendingRescue).toEqual([]);
+    expect(deriveProgress(run(D1, 40), day(41)).pendingRescue).toEqual([day(40)]);
+    expect(deriveProgress(run(D1, 40), day(42)).pendingRescue).toEqual([day(40), day(41)]);
+  });
+
+  it('記録がない・アイテムがないときは案内しない', () => {
+    expect(deriveProgress([], D1).pendingRescue).toEqual([]);
+    expect(deriveProgress(run(D1, 3), day(4)).pendingRescue).toEqual([]);
+  });
+
+  it('使った日を1問以上に直すとアイテムが戻る', () => {
+    const p = deriveProgress([...run(D1, 20), { ...rec(day(20), 2), rescue: true }], day(20));
+    expect(p.stats).toMatchObject({ rescueItems: 1, currentStreak: 21 });
+    expect(p.rescuedDates.size).toBe(0);
+  });
+
+  it('過去日を直してアイテムが足りなくなると、その印は無効になる', () => {
+    const records = [...run(D1, 20), rescue(day(20)), rec(day(21), 1)];
+    const edited = records.map((r) => (r.date === day(5) ? { ...r, problems: 0 } : r));
+    const p = deriveProgress(edited, day(21));
+    expect(p.rescuedDates.size).toBe(0);
+    expect(p.stats.rescueItems).toBe(0);
+    expect(p.stats.currentStreak).toBe(1);
+  });
+
+  it('バックアップで使った日と日数の設定が保たれる', () => {
+    const records = [...run(D1, 20), rescue(day(20), true)];
+    const text = buildBackup(records, new Date('2026-05-01T00:00:00Z'), 15);
+    expect(parseBackup(text, day(21))[20]).toMatchObject({ date: day(20), rescue: true, homework: true });
+    expect(readRescueInterval(text)).toBe(15);
+    expect(readRescueInterval(buildBackup(records))).toBeNull();
+  });
+
+  it('統合では使ったかどうかの違いも差分として数える', () => {
+    const plan = planMerge([rec(D1, 0)], [rescue(D1)]);
+    expect(plan.identical).toBe(0);
+    expect(plan.conflicts).toHaveLength(1);
   });
 });
 

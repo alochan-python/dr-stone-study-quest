@@ -302,7 +302,7 @@ describe('過去日の編集', () => {
 describe('50人達成後', () => {
   const fifty = Array.from({ length: 50 }, (_, i) => rec(addDays(TODAY, i - 50), 2));
 
-  it('達成画面を自動で開き、統計と履歴を表示する。以後は2周目を記録できる', async () => {
+  it('達成画面を自動で開き、統計と履歴を表示する。以後はレベル2を記録できる', async () => {
     await seed(fifty);
     const user = userEvent.setup();
     render(
@@ -317,19 +317,19 @@ describe('50人達成後', () => {
     expect(screenEl.querySelectorAll('tbody tr')).toHaveLength(50);
     expect(screenEl.querySelectorAll('.crowd-hex')).toHaveLength(50);
 
-    await user.click(screen.getByRole('button', { name: /2周目へ進む/ }));
+    await user.click(screen.getByRole('button', { name: /レベル2へ進む/ }));
     const card = screen.getByTestId('stamp-card');
     expect(card).toHaveClass('lap-special');
-    expect(within(card).getByText('2周目 特別枠')).toBeInTheDocument();
+    expect(within(card).getByText('レベル2 特別枠')).toBeInTheDocument();
     expect(within(card).getByText('ブロディ')).toBeInTheDocument();
 
     await user.click(plusOne());
     await user.click(saveButton());
     await screen.findByText(/ブロディの銅スタンプ/);
     await openTab(user, 'スタンプ帳');
-    expect(screen.getByRole('tab', { name: '1周目' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'レベル1' })).toBeInTheDocument();
     expect(screen.getByTestId('zukan-count')).toHaveTextContent('1');
-    await user.click(screen.getByRole('tab', { name: '1周目' }));
+    await user.click(screen.getByRole('tab', { name: 'レベル1' }));
     expect(screen.getByTestId('zukan-count')).toHaveTextContent('50');
   });
 });
@@ -411,5 +411,63 @@ describe('バックアップと初期化', () => {
     expect(screen.getByTestId('image-status')).toHaveTextContent('1人分');
     await openTab(user, 'ホーム');
     expect(within(screen.getByTestId('stamp-card')).getByRole('img', { name: 'コニー・リー' }).tagName).toBe('IMG');
+  });
+});
+
+describe('文明レベルとお助けアイテム', () => {
+  const streak = (count: number, endOffset: number) =>
+    Array.from({ length: count }, (_, i) => rec(addDays(TODAY, endOffset - count + 1 + i), 1));
+
+  it('ホームにレベルを表示し、一覧では先のレベルの中身を隠す', async () => {
+    const { user } = await start();
+    expect(screen.getByTestId('level-card')).toHaveTextContent('石器時代レベル');
+    await user.click(screen.getByTestId('level-card'));
+    const list = screen.getByTestId('level-list');
+    expect(list).toHaveTextContent('石斧');
+    expect(list).toHaveTextContent('鉄器・ガラス時代レベル');
+    expect(list).not.toHaveTextContent('水力発電所');
+  });
+
+  it('連続20日目の保存でアイテムをもらい、きろくに反映される', async () => {
+    await seed(streak(19, -1));
+    const { user } = await start();
+    await user.click(plusOne());
+    await user.click(saveButton());
+    await screen.findByText(/お助けアイテムをゲット/);
+    expect(screen.getByTestId('rescue-items')).toHaveTextContent('お助けアイテム 1個');
+    await openTab(user, 'きろく');
+    expect(screen.getByTestId('stat-rescue')).toHaveTextContent('1');
+  });
+
+  it('休んだ翌日にアイテムを使うと連続がつながり、再起動後も残る', async () => {
+    await seed(streak(20, -2));
+    const { user, unmount } = await start();
+    expect(screen.getByTestId('current-streak')).toHaveTextContent('0');
+    await user.click(within(screen.getByTestId('rescue-offer')).getByRole('button'));
+    await waitFor(() => expect(screen.getByTestId('current-streak')).toHaveTextContent('20'));
+    expect(screen.queryByTestId('rescue-offer')).not.toBeInTheDocument();
+    expect(screen.getByTestId('rescue-items')).toHaveTextContent('お助けアイテム 0個');
+    unmount();
+    await start();
+    expect(screen.getByTestId('current-streak')).toHaveTextContent('20');
+  });
+
+  it('管理欄で日数を変えると反映され、再起動後も残る。範囲外は無視する', async () => {
+    await seed(streak(10, -1));
+    const { user, unmount } = await start();
+    expect(screen.getByTestId('rescue-items')).toHaveTextContent('お助けアイテム 0個');
+    await openTab(user, 'きろく');
+    const field = screen.getByTestId('rescue-interval');
+    await user.clear(field);
+    await user.type(field, '0');
+    expect(screen.getByTestId('stat-rescue')).toHaveTextContent('0');
+    await user.clear(field);
+    await user.type(field, '5');
+    await waitFor(() => expect(screen.getByTestId('stat-rescue')).toHaveTextContent('2'));
+    unmount();
+    const again = await start();
+    expect(screen.getByTestId('rescue-items')).toHaveTextContent('お助けアイテム 2個');
+    await openTab(again.user, 'きろく');
+    expect(screen.getByTestId('rescue-interval')).toHaveValue(5);
   });
 });

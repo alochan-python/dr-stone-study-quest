@@ -4,6 +4,7 @@ import { Portrait } from '../components/Portrait';
 import { StampCard } from '../components/StampCard';
 import { CHARACTERS, TOTAL_CHARACTERS } from '../domain/characters';
 import { formatJaFull } from '../domain/date';
+import { lapLabel } from '../domain/levels';
 import { awardsInLap, type Award } from '../domain/progress';
 import { useApp } from '../state/store';
 
@@ -22,10 +23,10 @@ export function Zukan({ onEditDay }: { onEditDay(date: string): void }) {
         </p>
       </header>
       {progress.stats.lap >= 2 && (
-        <div className="lap-tabs" role="tablist" aria-label="周の切り替え">
+        <div className="lap-tabs" role="tablist" aria-label="レベルの切り替え">
           {Array.from({ length: progress.stats.lap }, (_, i) => i + 1).map((n) => (
             <button key={n} role="tab" aria-selected={n === lap} className={n === lap ? 'is-on' : ''} onClick={() => setLap(n)}>
-              {n}周目
+              {lapLabel(n)}
             </button>
           ))}
         </div>
@@ -65,7 +66,7 @@ export function Zukan({ onEditDay }: { onEditDay(date: string): void }) {
             <div><dt>達成した日</dt><dd>{formatJaFull(selected.date)}</dd></div>
             <div><dt>解いた問題数</dt><dd>{selected.problems}問</dd></div>
             <div><dt>グレード</dt><dd>{selected.grade.label}</dd></div>
-            {selected.lap >= 2 && <div><dt>周</dt><dd>{selected.lap}周目</dd></div>}
+            {selected.lap >= 2 && <div><dt>文明レベル</dt><dd>{lapLabel(selected.lap)}</dd></div>}
           </dl>
           <div className="modal-actions">
             <button

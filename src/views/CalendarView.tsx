@@ -40,7 +40,10 @@ export function CalendarView({ onEditDay }: { onEditDay(date: string): void }) {
           const record = progress.recordByDate.get(cell.date);
           const award = progress.awardByDate.get(cell.date);
           const future = cell.date > today;
-          const description = !record
+          const rescued = progress.rescuedDates.has(cell.date);
+          const description = rescued
+            ? 'お助けアイテムを使用'
+            : !record
             ? '未入力'
             : `${record.homework ? '宿題済み、' : ''}${record.problems}問${award ? `、${award.grade.label}、${award.character.name}` : ''}`;
           return (
@@ -51,7 +54,7 @@ export function CalendarView({ onEditDay }: { onEditDay(date: string): void }) {
               onClick={() => onEditDay(cell.date)}
               aria-label={`${formatJa(cell.date)} ${future ? '' : description}`}
               data-testid={`day-${cell.date}`}
-              data-state={!record ? 'empty' : record.problems === 0 ? 'zero' : 'achieved'}
+              data-state={rescued ? 'rescued' : !record ? 'empty' : record.problems === 0 ? 'zero' : 'achieved'}
             >
               <span className="cal-top">
                 <span className="cal-day">{cell.day}</span>
@@ -60,7 +63,8 @@ export function CalendarView({ onEditDay }: { onEditDay(date: string): void }) {
               {award && (
                 <span className="cal-thumb"><Portrait character={award.character} /></span>
               )}
-              {record && record.problems === 0 && <span className="cal-zero">0問</span>}
+              {rescued && <span className="cal-rescue" title="お助けアイテム">🧪</span>}
+              {record && record.problems === 0 && !rescued && <span className="cal-zero">0問</span>}
               {award && (
                 <span className="cal-meta">{award.problems}問 <b>{award.grade.short}</b></span>
               )}
@@ -72,6 +76,7 @@ export function CalendarView({ onEditDay }: { onEditDay(date: string): void }) {
         <li>✅ 宿題完了</li>
         <li><span className="legend-empty" /> 空欄＝未入力</li>
         <li>0問＝入力したが0問</li>
+        <li>🧪 お助けアイテムを使った日</li>
         <li>銅・銀・金・PT＝スタンプ（PT＝プラチナ）</li>
       </ul>
       <p className="page-note">日付をタップすると、その日の記録を確認・修正できます。</p>

@@ -3,11 +3,12 @@ import { ConfirmDialog, Modal } from '../components/Modal';
 import { TOTAL_CHARACTERS } from '../domain/characters';
 import { ImagePackButton } from '../components/ImagePackButton';
 import { ImageUnlock } from '../components/ImageUnlock';
-import { ImportError, backupFileName, parseBackup, planMerge, type MergePlan } from '../domain/backup';
+import { ImportError, backupFileName, parseBackup, planMerge, readRescueInterval, type MergePlan } from '../domain/backup';
 import { formatJa } from '../domain/date';
 import { gradeFor } from '../domain/grade';
+import { lapLabel } from '../domain/levels';
 import { playConfirmSound } from '../domain/sound';
-import type { DayRecord } from '../domain/progress';
+import { MAX_RESCUE_INTERVAL, isValidRescueInterval, type DayRecord } from '../domain/progress';
 import { useApp } from '../state/store';
 
 async function deliverFile(name: string, text: string) {
@@ -37,7 +38,7 @@ export function Records({ onOpenComplete }: { onOpenComplete(): void }) {
   const { progress, today, records, settings, images, snapshot, notify } = app;
   const { stats } = progress;
   const backupInput = useRef<HTMLInputElement>(null);
-  const [incoming, setIncoming] = useState<{ records: DayRecord[]; plan: MergePlan } | null>(null);
+  const [incoming, setIncoming] = useState<{ records: DayRecord[]; plan: MergePlan; rescueInterval: number | null } | null>(null);
   const [confirm, setConfirm] = useState<'replace' | 'reset' | 'restore' | 'clear-images' | null>(null);
   const imageCount = Object.keys(images).length;
 
@@ -65,7 +66,7 @@ export function Records({ onOpenComplete }: { onOpenComplete(): void }) {
 
   const onBackupFile = (text: string) => {
     const parsed = parseBackup(text, today);
-    setIncoming({ records: parsed, plan: planMerge(records, parsed) });
+    setIncoming({ records: parsed, plan: planMerge(records, parsed), rescueInterval: readRescueInterval(text) });
   };
 
   const merge = async () => {
@@ -79,6 +80,7 @@ export function Records({ onOpenComplete }: { onOpenComplete(): void }) {
   const replace = async () => {
     setConfirm(null);
     if (incoming && (await app.replaceAll(incoming.records))) {
+      if (incoming.rescueInterval !== null) await app.updateSettings({ rescueInterval: incoming.rescueInterval });
       notify({ kind: 'success', text: 'バックアップの内容に置き換えました' });
       setIncoming(null);
     }
@@ -92,9 +94,10 @@ export function Records({ onOpenComplete }: { onOpenComplete(): void }) {
         <Stat label="最長連続達成" value={stats.longestStreak} unit="日" id="stat-longest" hero />
         <Stat label="累計自主勉強達成" value={stats.achievedDays} unit="日" id="stat-days" />
         <Stat label="自主勉強の累計" value={stats.totalProblems} unit="問" id="stat-problems" />
-        <Stat label={`${stats.lap >= 2 ? `${stats.lap}周目 ` : ''}${TOTAL_CHARACTERS}人中`} value={stats.collected} unit="人まで" id="stat-collected" />
+        <Stat label={`${lapLabel(stats.lap)} ${TOTAL_CHARACTERS}人中`} value={stats.collected} unit="人まで" id="stat-collected" />
         <Stat label="残りキャラクター" value={stats.remaining} unit="人" id="stat-remaining" />
         <Stat label="宿題達成" value={stats.homeworkDays} unit="日" id="stat-homework" />
+        <Stat label="お助けアイテム" value={stats.rescueItems} unit="個" id="stat-rescue" />
       </dl>
       {stats.achievedDays >= TOTAL_CHARACTERS && (
         <button className="banner banner-gold" onClick={onOpenComplete}>50日達成の記念画面を見る ›</button>
@@ -160,6 +163,14 @@ export function Records({ onOpenComplete }: { onOpenComplete(): void }) {
             }}
           />
         </label>
+      </section>
+
+      <section className="panel">
+        <h3>管理</h3>
+        <RescueIntervalField />
+        <p className="panel-note">
+          変更すると、過去の記録にさかのぼってアイテムの数を計算し直します。日数を増やすと、使い済みのアイテムが無効になって連続記録が短くなることがあります。
+        </p>
       </section>
 
       <section className="panel panel-danger">
@@ -250,6 +261,33 @@ export function Records({ onOpenComplete }: { onOpenComplete(): void }) {
         />
       )}
     </div>
+  );
+}
+
+function RescueIntervalField() {
+  const { settings, updateSettings } = useApp();
+  const [text, setText] = useState(String(settings.rescueInterval));
+  return (
+    <label className="switch-row">
+      <span>お助けアイテムをもらえる連続日数</span>
+      <span className="interval-field">
+        <input
+          type="number"
+          inputMode="numeric"
+          min={1}
+          max={MAX_RESCUE_INTERVAL}
+          value={text}
+          data-testid="rescue-interval"
+          onChange={(e) => {
+            setText(e.target.value);
+            const value = Number(e.target.value);
+            if (e.target.value !== '' && isValidRescueInterval(value)) void updateSettings({ rescueInterval: value });
+          }}
+          onBlur={() => setText(String(settings.rescueInterval))}
+        />
+        日
+      </span>
+    </label>
   );
 }
 
